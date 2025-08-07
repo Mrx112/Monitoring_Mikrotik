@@ -8,78 +8,84 @@ use RouterOS\Query;
 use Illuminate\Contracts\View\Factory;
 use Illuminate\View\View;
 use App\Models\User;
+use App\Models\Device;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class HomeController extends Controller
 {
     public function index(): Factory|View
     {
-        try {
-            $client = new Client([
-                'host' => '192.168.112.1',
-                'user' => 'admin',
-                'pass' => ''
-            ]);
+        $devices = Device::all();
+        $deviceStatus = [];
+        $primaryClient = null;
 
-            $user = $client->query('/ip/hotspot/user/print')->read();
-            $aktif = $client->query('/ip/hotspot/active/print')->read();
-            $resource = $client->query('/system/resource/print')->read();
-            $trafic = $client->query(['/interface/monitor-traffic', '=interface=ether1', '=once='])->read();
-            $log = $client->query('/log/print')->read();
-            $totalUser = is_array($user) ? count($user) : 0;
-            $totalAktif = is_array($aktif) ? count($aktif) : 0;
-        } catch (\Exception $e) {
-            // Jika gagal koneksi Mikrotik, tampilkan dashboard kosong dengan pesan error
-            $user = $aktif = $resource = $trafic = $log = [];
-            $totalUser = $totalAktif = 0;
-            session()->flash('error', 'Tidak dapat terhubung ke Mikrotik: ' . $e->getMessage());
+        foreach ($devices as $device) {
+            try {
+                $client = new Client([
+                    'host' => $device->ip_address,
+                    'user' => $device->username,
+                    'pass' => $device->password,
+                    'port' => $device->port ?? 8728,
+                    'timeout' => 3
+                ]);
+
+                $client->query('/system/resource/print')->read();
+                $device->status = 'online';
+
+                if (!$primaryClient) {
+                    $primaryClient = $client;
+                }
+            } catch (\Exception $e) {
+                $device->status = 'offline';
+            }
+
+            $deviceStatus[] = $device;
         }
 
-        // Contoh: Ambil data queue dari Mikrotik atau database
-        // $queues = ...;
-        // $trafic = ...;
+        if (!$primaryClient) {
+            session()->flash('error', 'Tidak ada perangkat Mikrotik yang online.');
+            return view('home', [
+                'user' => [],
+                'aktif' => [],
+                'resource' => [],
+                'trafic' => [],
+                'log' => [],
+                'totalUser' => 0,
+                'totalAktif' => 0,
+                'devices' => collect($deviceStatus),
+                'deadDevices' => collect($deviceStatus)->filter(fn($d) => $d->status === 'offline')
+            ]);
+        }
 
-        // Contoh dummy jika belum ada data asli:
-        $queues = [
-            [
-                'name' => 'Host',
-                'target' => 'ether1',
-                'max-limit' => 'Unlimited',
-                'comment' => 'Sample',
-            ],
-            [
-                'name' => 'User1',
-                'target' => 'ether2',
-                'max-limit' => 'Unlimited',
-                'comment' => 'Sample 2',
-            ],
-            [
-                'name' => 'User2',
-                'target' => 'ether3',
-                'max-limit' => 'Unlimited',
-                'comment' => 'Sample 3',
-            ],
-        ];
-        $trafic = [
-            'ether1' => [[
-                'rx-bits-per-second' => 1000000,
-                'tx-bits-per-second' => 500000,
-                'status' => 'up'
-            ]],
-            'ether2' => [[
-                'rx-bits-per-second' => 2000000,
-                'tx-bits-per-second' => 1000000,
-                'status' => 'down'
-            ]],
-            'ether3' => [[
-                'rx-bits-per-second' => 2000000,
-                'tx-bits-per-second' => 1000000,
-                'status' => 'down'
-            ]],
-        ];
+        try {
+            $user = $primaryClient->query('/ip/hotspot/user/print')->read();
+            $aktif = $primaryClient->query('/ip/hotspot/active/print')->read();
+            $resource = $primaryClient->query('/system/resource/print')->read();
+            $trafic = $primaryClient->query([
+                '/interface/monitor-traffic',
+                '=interface=ether1',
+                '=once='
+            ])->read();
+            $log = $primaryClient->query('/log/print')->read();
+        } catch (\Exception $e) {
+            $user = $aktif = $resource = $trafic = $log = [];
+            session()->flash('error', 'Tidak dapat membaca data Mikrotik: ' . $e->getMessage());
+        }
 
-        // Kirim ke view
-        return view('home', compact('totalUser', 'totalAktif', 'resource', 'trafic', 'log', 'queues'));
+        $totalUser = is_array($user) ? count($user) : 0;
+        $totalAktif = is_array($aktif) ? count($aktif) : 0;
+
+        return view('home', [
+            'user' => $user,
+            'aktif' => $aktif,
+            'resource' => $resource,
+            'trafic' => $trafic,
+            'log' => $log,
+            'totalUser' => $totalUser,
+            'totalAktif' => $totalAktif,
+            'devices' => collect($deviceStatus),
+            'deadDevices' => collect($deviceStatus)->filter(fn($d) => $d->status === 'offline')
+        ]);
     }
 
     public function userList(Request $request): View
@@ -87,7 +93,7 @@ class HomeController extends Controller
         $query = User::query();
         if ($request->has('search') && $request->search) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%$search%")
                   ->orWhere('username', 'like', "%$search%")
                   ->orWhere('email', 'like', "%$search%");
@@ -104,7 +110,7 @@ class HomeController extends Controller
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="users.csv"',
         ];
-        $callback = function() use ($users) {
+        $callback = function () use ($users) {
             $handle = fopen('php://output', 'w');
             fputcsv($handle, ['ID', 'Name', 'Username', 'Email', 'Created At']);
             foreach ($users as $user) {
@@ -115,15 +121,15 @@ class HomeController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    public function queueList(): View
+    public function queueTree(): View
     {
         try {
             $client = new Client([
-                'host' => '192.168.112.1',
+                'host' => '114.30.81.4',
                 'user' => 'admin',
-                'pass' => ''
+                'pass' => 'masuk.aja'
             ]);
-            $queues = $client->query('/queue/simple/print')->read();
+            $queues = $client->query('/queue/tree/print')->read();
             $trafic = [];
             foreach ($queues as $queue) {
                 if (!empty($queue['target'])) {
@@ -139,45 +145,43 @@ class HomeController extends Controller
             $trafic = [];
             session()->flash('error', 'Tidak dapat terhubung ke Mikrotik: ' . $e->getMessage());
         }
-        return view('queue_list', compact('queues', 'trafic'));
+
+        return view('queue_tree', compact('queues', 'trafic'));
     }
 
     public function apiTraffic(Request $request)
     {
         $interface = $request->query('interface', 'ether1');
-        try {
-            $client = new Client([
-                'host' => '192.168.112.1',
-                'user' => 'admin',
-                'pass' => ''
+
+        $API = new \RouterOS\RouterosAPI();
+        if ($API->connect(env('MIKROTIK_HOST'), env('MIKROTIK_USER'), env('MIKROTIK_PASS'))) {
+            $response = $API->comm("/interface/monitor-traffic", [
+                "interface" => $interface,
+                "once" => ""
             ]);
-            $trafic = $client->query([
-                '/interface/monitor-traffic',
-                '=interface=' . $interface,
-                '=once='
-            ])->read();
-            $rx = isset($trafic[0]['rx-bits-per-second']) ? $trafic[0]['rx-bits-per-second'] : 0;
-            $tx = isset($trafic[0]['tx-bits-per-second']) ? $trafic[0]['tx-bits-per-second'] : 0;
-        } catch (\Exception $e) {
-            $rx = 0;
-            $tx = 0;
+            $API->disconnect();
+
+            $rx = $response[0]['rx-bits-per-second'] ?? 0;
+            $tx = $response[0]['tx-bits-per-second'] ?? 0;
+
+            return response()->json([
+                'rx' => (int)$rx,
+                'tx' => (int)$tx
+            ]);
+        } else {
+            return response()->json(['error' => 'Could not connect to Mikrotik'], 500);
         }
-        return response()->json([
-            'rx' => $rx,
-            'tx' => $tx
-        ]);
     }
 
-    // API untuk status queue (sidebar)
     public function apiQueueStatus()
     {
         try {
             $client = new Client([
-                'host' => '192.168.112.1',
+                'host' => '114.30.81.4',
                 'user' => 'admin',
-                'pass' => ''
+                'pass' => 'masuk.aja'
             ]);
-            $queues = $client->query('/queue/simple/print')->read();
+            $queues = $client->query('/queue/tree/print')->read();
             $status = 'down';
             foreach ($queues as $queue) {
                 if (isset($queue['disabled']) && $queue['disabled'] === 'false') {
@@ -189,5 +193,43 @@ class HomeController extends Controller
             $status = 'down';
         }
         return response()->json(['status' => $status]);
+    }
+
+    public function trafficChart(): View
+    {
+        return view('traffic_chart');
+    }
+
+    public function all(): \Illuminate\Http\JsonResponse
+    {
+        $client = new Client([
+            'host' => '114.30.81.4',
+            'user' => 'admin',
+            'pass' => 'masuk.aja'
+        ]);
+
+        $interfaces = ['ether1', 'ether2', 'ether3', 'ether4', 'ether5', 'ether6', 'ether7', 'ether8', 'ether9', 'ether10'];
+        $responses = [];
+
+        foreach ($interfaces as $iface) {
+            try {
+                $query = new Query('/interface/monitor-traffic');
+                $query->equal('interface', $iface)->equal('once', '');
+                $result = $client->query($query)->read();
+
+                if (isset($result[0])) {
+                    $responses[$iface] = [
+                        'rx' => (int) $result[0]['rx-bits-per-second'],
+                        'tx' => (int) $result[0]['tx-bits-per-second'],
+                    ];
+                } else {
+                    $responses[$iface] = ['rx' => 0, 'tx' => 0];
+                }
+            } catch (\Exception $e) {
+                $responses[$iface] = ['rx' => 0, 'tx' => 0];
+            }
+        }
+
+        return response()->json($responses);
     }
 }

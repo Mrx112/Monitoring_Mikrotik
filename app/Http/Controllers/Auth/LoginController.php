@@ -19,18 +19,22 @@ class LoginController extends Controller
             'username' => 'required',
             'password' => 'required',
         ]);
-
-        $credentials = $request->only('username', 'password');
-
+    
+        $credentials = [
+            'username' => $request->input('username'),
+            'password' => $request->input('password'),
+        ];
+    
         if (Auth::attempt($credentials, $request->filled('remember'))) {
             $request->session()->regenerate();
             return redirect()->intended('/home');
         }
-
+    
         return back()->withErrors([
             'username' => 'Username atau password salah.',
         ])->withInput($request->only('username'));
     }
+
 
     public function logout(Request $request)
     {
@@ -38,5 +42,11 @@ class LoginController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         return redirect('/login');
+    }
+
+    // ⬇️ Tambahkan ini
+    public function username()
+    {
+        return 'username';
     }
 }

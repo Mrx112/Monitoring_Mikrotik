@@ -91,7 +91,7 @@
             </a>
           </li>
           <li class="nav-item mt-2">
-            <a href="{{ '/user' }}" class="nav-link active" style="background: #b3d8fd; color: #222;">
+            <a href="{{ route('user.list') }}" class="nav-link active" style="background: #b3d8fd; color: #222;">
               <i class="fas fa-users"></i>
               <p>
                 User
@@ -99,9 +99,9 @@
             </a>
           </li>
           <li class="nav-item mt-2">
-            <a href="{{ route('queue.list') }}" class="nav-link">
+            <a href="{{ route('queue.tree') }}" class="nav-link">
               <i class="fas fa-stream"></i>
-              <p>Queue List <span id="queue-status-indicator" style="margin-left:8px;"><span class="dot-status" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#aaa;"></span></span></p>
+              <p>Queue Tree <span id="queue-status-indicator" style="margin-left:8px;"><span class="dot-status" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#aaa;"></span></span></p>
             </a>
           </li>
           <li class="nav-item mt-2">

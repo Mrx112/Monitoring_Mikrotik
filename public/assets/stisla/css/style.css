@@ -2980,3 +2980,38 @@ body:not(.sidebar-mini) .sidebar-style-2 .sidebar-menu li.active ul.dropdown-men
   100% {
     -webkit-transform: scale(1.2, 1.2);
     opacity: 0.0; } }
+
+    .highcharts-figure, .highcharts-data-table table {
+        min-width: 310px;
+        max-width: 800px;
+        margin: 1em auto;
+    }
+    .highcharts-description {
+        text-align: center;
+        font-size: 0.9em;
+        color: #666;
+    }
+
+    #traffic-static {
+    font-size: 1.2rem;
+    font-weight: 500;
+    text-align: center;
+    padding: 0.5rem;
+    }
+
+    .legend-dot {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 6px;
+        margin-right: 5px;
+    }
+    .legend-download { background-color: #7cb5ec; }
+    .legend-upload { background-color: #f15c80; }
+
+    .chart-legend {
+        text-align: center;
+        margin-top: 1rem;
+        font-size: 0.9rem;
+        color: #555;
+    }

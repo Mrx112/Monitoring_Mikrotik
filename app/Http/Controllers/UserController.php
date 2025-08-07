@@ -16,9 +16,9 @@ class UserController extends Controller
 
     public function index(): Factory|View {
         $client = new Client(config: [
-            'host' => '192.168.112.1',
+            'host' => '114.30.81.4',
             'user' => 'admin',
-            'pass' => ''
+            'pass' => 'masuk.aja'
         ]);
 
         $data = $client->query(endpoint: '/ip/hotspot/user/print')->read();
@@ -31,9 +31,9 @@ class UserController extends Controller
 
     public function add(): Factory|View {
         $client = new Client(config: [
-            'host' => '192.168.112.1',
+            'host' => '114.30.81.4',
             'user' => 'admin',
-            'pass' => ''
+            'pass' => 'masuk.aja'
         ]);
         $profile = $client->query(endpoint: '/ip/hotspot/user/profile/print')->read();
         // dd($profle);
@@ -42,9 +42,9 @@ class UserController extends Controller
 
     public function store(Request $request): Redirector|RedirectResponse {
         $client = new Client(config: [
-            'host' => '192.168.112.1',
+            'host' => '114.30.81.4',
             'user' => 'admin',
-            'pass' => ''
+            'pass' => 'masuk.aja'
         ]);
 
         // Simpan ke database Laravel (lengkap sesuai struktur tabel)
@@ -71,9 +71,9 @@ class UserController extends Controller
 
     public function quick(): Redirector|RedirectResponse {
         $client = new Client(config: [
-            'host' => '192.168.112.1',
+            'host' => '114.30.81.4',
             'user' => 'admin',
-            'pass' => ''
+            'pass' => 'masuk.aja'
         ]);
 
         for($i = 0; $i <= 200; $i++) {
@@ -87,9 +87,9 @@ class UserController extends Controller
 
     public function destroy($id): Redirector|RedirectResponse {
         $client = new Client(config: [
-            'host' => '192.168.112.1',
+            'host' => '114.30.81.4',
             'user' => 'admin',
-            'pass' => ''
+            'pass' => 'masuk.aja'
         ]);
         $client->query(endpoint: ['/ip/hotspot/user/remove', '=.id='.$id])->read();
 
@@ -98,9 +98,9 @@ class UserController extends Controller
 
     public function deleteAll(Request $request): Redirector|RedirectResponse {
         $client = new Client(config: [
-            'host' => '192.168.112.1',
+            'host' => '114.30.81.4',
             'user' => 'admin',
-            'pass' => ''
+            'pass' => 'masuk.aja'
         ]);
         // Hapus semua user Mikrotik
         $users = $client->query(endpoint: '/ip/hotspot/user/print')->read();

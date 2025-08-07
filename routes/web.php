@@ -2,6 +2,10 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\MikrotikConnectionController;
+use App\Http\Controllers\Api\TrafficController;
+use App\Http\Controllers\MapController;
+
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -30,8 +34,11 @@ Route::post('/hotspot/user/delete-all', [App\Http\Controllers\UserController::cl
 // Webview Untuk Menampilkan Fitur dari Mikrotik
 Route::get('/user-list', [App\Http\Controllers\HomeController::class, 'userList'])->name('user.list');
 Route::get('/user-list/export', [App\Http\Controllers\HomeController::class, 'exportUserCsv'])->name('user.export');
-Route::get('/queue-list', [App\Http\Controllers\HomeController::class, 'queueList'])->name('queue.list');
+Route::get('/queue-tree', [App\Http\Controllers\HomeController::class, 'queueTree'])->name('queue.tree');
 Route::get('/api/traffic', [App\Http\Controllers\HomeController::class, 'apiTraffic']);
+Route::get('/traffic', [HomeController::class, 'trafficChart']);
+Route::get('/api/traffic-all', [HomeController::class, 'all'])->name('api.traffic.all');
+
 
 // API untuk status queue (sidebar)
 Route::get('/api/queue-status', [App\Http\Controllers\HomeController::class, 'apiQueueStatus']);
@@ -51,3 +58,9 @@ Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name
 Route::get('/connections', [MikrotikConnectionController::class, 'index'])->name('connections.index');
 Route::post('/connections/login', [MikrotikConnectionController::class, 'login'])->name('connections.login');
 Route::delete('/connection/{id}', [MikrotikConnectionController::class, 'destroy'])->name('connections.destroy');
+
+// Mikrotik User Location
+Route::get('/map', [MapController::class, 'index']);
+Route::get('/map/status', [MapController::class, 'status']);
+Route::get('/map/traffic/{id}', [MapController::class, 'traffic']);
+Route::get('/map/global-traffic', [MapController::class, 'globalTraffic']);
